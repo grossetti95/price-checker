@@ -615,3 +615,20 @@ def run_analysis(
         result.errore = f"Errore salvataggio report: {e}"
 
     return result
+
+def export_modified_csv(original_csv_path: str, price_updates: dict[str, float], output_dir: str) -> str:
+    """
+    Exports a modified copy of the Shopify CSV with updated prices.
+    price_updates: {handle: new_price}
+    Returns the path of the saved file.
+    """
+    df = pd.read_csv(original_csv_path, low_memory=False)
+    
+    for handle, new_price in price_updates.items():
+        mask = df["Handle"] == handle
+        df.loc[mask, "Variant Price"] = new_price
+
+    ts = datetime.now().strftime("%Y%m%d_%H%M")
+    output_path = os.path.join(output_dir, f"catalogo_prezzi_aggiornati_{ts}.csv")
+    df.to_csv(output_path, index=False, encoding="utf-8")
+    return output_path

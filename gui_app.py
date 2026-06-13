@@ -411,12 +411,12 @@ class SelezioneFrame(ctk.CTkFrame):
         sel_row.pack(fill="x")
         ctk.CTkButton(
             sel_row, text="Seleziona tutti", width=140, height=30, font=FONT_SMALL,
-            fg_color="#1f9d55", hover_color="#c0392b", border_width=1, text_color="#ffffff",
+            fg_color="#00b4d8", hover_color="#1a8a7a", border_width=1, text_color="#ffffff",
             command=lambda: self._set_all_brand_checks(True),
         ).pack(side="left", pady=(2, 6))
         ctk.CTkButton(
             sel_row, text="Deseleziona tutti", width=140, height=30, font=FONT_SMALL,
-            fg_color="#1f9d55", hover_color="#c0392b", border_width=1, text_color="#ffffff",
+            fg_color="#00b4d8", hover_color="#1a8a7a", border_width=1, text_color="#ffffff",
             command=lambda: self._set_all_brand_checks(False),
         ).pack(side="left", padx=(8, 0), pady=(2, 6))
 
@@ -765,11 +765,20 @@ class RisultatiFrame(ctk.CTkFrame):
             command=lambda: app.show("selezione"),
         ).pack(side="right")
 
+        self.export_csv_btn = ctk.CTkButton(
+            btn_row, text="💾  Esporta CSV modificato", font=FONT_BOLD, height=42,
+            fg_color="#1a8a7a", hover_color="#00b4d8", text_color="#ffffff",
+            command=self._export_modified_csv,
+            state="disabled",
+        )
+        self.export_csv_btn.pack(side="left", padx=10)
+
         ctk.CTkLabel(self, text="Dettaglio prodotti più cari della concorrenza:",
                       font=FONT_BOLD).pack(anchor="w", padx=40, pady=(6, 6))
 
         self.scroll = ctk.CTkScrollableFrame(self, fg_color="#ffffff", corner_radius=12)
         self.scroll.pack(fill="both", expand=True, padx=40, pady=(0, 30))
+        self.price_updates: dict[str, float] = {}
 
     def refresh(self):
         for w in self.scroll.winfo_children():
@@ -851,6 +860,34 @@ class RisultatiFrame(ctk.CTkFrame):
         )
         link.pack(fill="x", padx=16, pady=(0, 14))
         link.bind("<Button-1>", lambda e, url=cheapest["url"]: open_path(url))
+        confirm_var = ctk.BooleanVar(value=False)
+        confirm_row = ctk.CTkFrame(card, fg_color="transparent")
+        confirm_row.pack(fill="x", padx=16, pady=(4, 14))
+
+        price_entry = ctk.CTkEntry(confirm_row, width=90, font=FONT_NORMAL)
+        price_entry.insert(0, str(suggested))
+        price_entry.pack(side="left", padx=(0, 10))
+
+        def on_confirm(var=confirm_var, e=price_entry, h=entry["title"], entry=entry):
+            if var.get():
+                try:
+                    new_price = float(e.get().replace(",", "."))
+                    self.price_updates[h] = new_price
+                except ValueError:
+                    var.set(False)
+                    messagebox.showerror("Errore", "Prezzo non valido.")
+                    return
+            else:
+                self.price_updates.pop(h, None)
+            self.export_csv_btn.configure(
+                state="normal" if self.price_updates else "disabled"
+            )
+
+        ctk.CTkCheckBox(
+            confirm_row, text="Conferma modifica prezzo",
+            variable=confirm_var, font=FONT_SMALL,
+            text_color="#1a8a7a", command=on_confirm,
+        ).pack(side="left")
 
     def _open_report(self):
         result = self.app.last_result
@@ -861,6 +898,23 @@ class RisultatiFrame(ctk.CTkFrame):
         result = self.app.last_result
         if result and result.report_path:
             open_path(os.path.dirname(os.path.abspath(result.report_path)))
+
+    def _export_modified_csv(self):
+        if not self.price_updates:
+            return
+        if not self.app.csv_path:
+            messagebox.showerror("Errore", "CSV originale non trovato.")
+            return
+        try:
+            out = core.export_modified_csv(
+                self.app.csv_path,
+                self.price_updates,
+                self.app.cfg.get("output_dir", os.path.expanduser("~")),
+            )
+            messagebox.showinfo("Esportazione completata", f"CSV salvato in:\n{out}")
+            open_path(os.path.dirname(out))
+        except Exception as e:
+            messagebox.showerror("Errore", f"Impossibile esportare il CSV:\n{e}")
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -942,6 +996,12 @@ class ImpostazioniFrame(ctk.CTkFrame):
         ).pack(side="right")
 
     def refresh(self):
+        def refresh(self):
+            self.price_updates = {}
+            self.export_csv_btn.configure(state="disabled")
+            for w in self.scroll.winfo_children():
+                w.destroy()
+    # ... rest of existing refresh code
         cfg = self.app.cfg
         self.api_key_entry.delete(0, "end")
         self.api_key_entry.insert(0, cfg.get("anthropic_api_key", ""))
