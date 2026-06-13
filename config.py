@@ -21,7 +21,7 @@ from pathlib import Path
 
 from core import DEFAULT_COMPETITOR_SITES
 
-APP_NAME = "CompetitorPriceChecker"
+APP_NAME = "Spryce"
 
 
 def _config_dir() -> Path:
@@ -41,7 +41,7 @@ DEFAULTS = {
     "use_ai": True,
     "competitor_sites": DEFAULT_COMPETITOR_SITES,
     "output_dir": str(Path.home() / "Desktop"),
-    "last_csv_dir": str(Path.home()),
+    "last_csv_dir": r"C:\Program Files\Spryce\CSV",
 }
 
 
@@ -56,11 +56,15 @@ def load_config() -> dict:
         except Exception:
             pass
 
-    # Se la cartella di output salvata non esiste più, torna al Desktop/Home
     if not cfg.get("output_dir"):
         cfg["output_dir"] = str(Path.home() / "Desktop") if (Path.home() / "Desktop").exists() else str(Path.home())
 
-    return cfg
+    # Auto-create CSV folder if it doesn't exist
+    csv_dir = cfg.get("last_csv_dir", "")
+    if csv_dir and not os.path.exists(csv_dir):
+        os.makedirs(csv_dir, exist_ok=True)
+
+    return cfg  # ← just before this line
 
 
 def save_config(cfg: dict) -> None:
