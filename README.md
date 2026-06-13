@@ -1,51 +1,41 @@
-# Competitor Price Checker — Versione Desktop (GUI)
+# Competitor Price Checker — Desktop GUI
 
-Applicazione desktop con interfaccia grafica per confrontare i prezzi del
-catalogo Shopify con quelli dei siti competitor, pensata per essere usata
-anche da chi non ha esperienza di terminale (titolare, colleghi).
+Desktop application with a graphical interface for comparing Shopify catalog prices against competitor websites.
 
-## Struttura del progetto
+## Project Structure
 
 ```
 CompetitorPriceChecker/
-├── core.py                     # logica di business (CSV, Selenium, AI, report)
-├── config.py                   # gestione impostazioni salvate localmente
-├── gui_app.py                  # interfaccia grafica (avvio del programma)
+├── core.py                     # business logic (CSV, Selenium, AI, reports)
+├── config.py                   # local settings management
+├── gui_app.py                  # GUI entry point
 ├── requirements.txt
-├── CompetitorPriceChecker.spec # configurazione PyInstaller
-└── icon.ico                    # (opzionale) icona dell'app
+├── CompetitorPriceChecker.spec # PyInstaller configuration
+└── icon.ico                    # (optional) app icon
 ```
 
-I vecchi file `price_checker.py` e `ui.py` (versione da terminale) non sono
-più necessari: tutta la logica è stata spostata in `core.py` e collegata
-alla nuova interfaccia.
+The old `price_checker.py` and `ui.py` (terminal version) are no longer needed — all logic has been moved to `core.py` and wired to the new interface.
 
 ---
 
-## 1. Requisiti sul PC dove crei il `.exe`
+## 1. Requirements (build machine)
 
 - **Windows 10/11**
-- **Python 3.11 o 3.12** installato (https://www.python.org/downloads/ —
-  durante l'installazione spunta "Add Python to PATH")
-- **Google Chrome** installato (serve sempre, sia per testare sia per i PC
-  dei colleghi: lo script lo pilota in background)
+- **Python 3.11 or 3.12** ([python.org](https://www.python.org/downloads/) — check "Add Python to PATH" during install)
+- **Google Chrome** installed (required both for testing and on end-user machines: the script drives it headlessly)
 
-## 2. Preparazione ambiente
+## 2. Environment Setup
 
-⚠️ **Usa un ambiente Python "pulito", NON l'Anaconda "base"**. Un ambiente
-Anaconda base contiene centinaia di librerie (Jupyter, matplotlib, PyQt5 *e*
-PySide6, sphinx, ecc.) che PyInstaller cerca di analizzare tutte, causando
-build lentissimi, file enormi, e talvolta errori come:
+⚠️ **Use a clean Python environment, NOT an Anaconda base env**. Anaconda base includes hundreds of libraries (Jupyter, matplotlib, PyQt5 *and* PySide6, sphinx, etc.) that PyInstaller tries to bundle, causing very slow builds, huge output, and errors like:
 
 ```
 ERROR: Aborting build process due to attempt to collect multiple Qt
 bindings packages: ... PyQt5 ... PySide6 ...
 ```
 
-Lo `.spec` aggiornato esclude già queste librerie come misura di sicurezza,
-ma è comunque molto meglio partire da un ambiente dedicato e leggero:
+The updated `.spec` already excludes these libraries as a safeguard, but it's much better to start from a dedicated, lean environment.
 
-Apri PowerShell nella cartella del progetto e crea un ambiente virtuale:
+Open PowerShell in the project folder and create a virtual environment:
 
 ```powershell
 python -m venv venv
@@ -53,120 +43,84 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-(Se hai solo Anaconda installato e `python` non è nel PATH, usa
-`C:\Users\TUO_UTENTE\anaconda3\python.exe -m venv venv` per creare il venv,
-poi attivalo normalmente con `venv\Scripts\activate`.)
+(If only Anaconda is installed and `python` isn't in PATH, use
+`C:\Users\YOUR_USER\anaconda3\python.exe -m venv venv` to create the venv,
+then activate it normally with `venv\Scripts\activate`.)
 
-## 3. Test rapido prima del build
+## 3. Quick Test Before Building
 
-Avvia l'app in locale per controllare che tutto funzioni:
+Run the app locally to verify everything works:
 
 ```powershell
 python gui_app.py
 ```
 
-Vai nella schermata **⚙ Impostazioni** e:
-- inserisci la tua chiave API Anthropic (per la pulizia AI dei titoli)
-- controlla/modifica la cartella dove salvare i report
-- controlla l'elenco dei siti competitor (uno per riga)
-- premi **Salva impostazioni**
+Go to the **⚙ Settings** screen and:
+- enter your Anthropic API key (used for AI-based title normalization)
+- check/set the folder where reports will be saved
+- review the competitor sites list (one per line)
+- click **Save settings**
 
-Questa configurazione viene scritta in un file locale (NON nel codice, quindi
-non finirà mai nel `.exe`):
+This configuration is written to a local file (NOT embedded in the code, so it will never end up in the `.exe`):
 
 ```
 %APPDATA%\CompetitorPriceChecker\config.json
 ```
 
-## 4. Creazione del `.exe`
+## 4. Building the `.exe`
 
-Sempre con l'ambiente virtuale attivo:
+With the virtual environment still active:
 
 ```powershell
 pyinstaller CompetitorPriceChecker.spec
 ```
 
-Al termine troverai tutto in:
+The output will be in:
 
 ```
 dist\CompetitorPriceChecker\
 ```
 
-Quella cartella (puoi anche zipparla) è l'app completa: contiene
-`CompetitorPriceChecker.exe` + tutte le librerie necessarie.
+That folder (which can be zipped) is the complete app: it contains `CompetitorPriceChecker.exe` plus all required libraries.
 
-⚠️ **Importante**: consegna ai colleghi l'intera cartella, non solo il
-`.exe` — altrimenti non si avvia.
+⚠️ **Important**: distribute the entire folder, not just the `.exe` — it won't launch otherwise.
 
 ---
 
-## 5. Configurazione sui PC dei colleghi
+## 5. Usage
 
-### La prima volta (la fai tu)
+1. Double-click the app icon
+2. **1. Catalog** → select the CSV exported from Shopify
+3. **2. Product Selection** → choose All, by keyword, or by brand
+4. **3. Analysis** → click "Start analysis" and wait
+5. **4. Results** → review flagged products and open the report
 
-1. Copia la cartella `dist\CompetitorPriceChecker` sul PC del collega
-   (es. sul Desktop, o in `C:\Programmi\CompetitorPriceChecker`).
-2. Crea un collegamento a `CompetitorPriceChecker.exe` sul Desktop.
-3. Avvia l'app **una volta** e vai in **⚙ Impostazioni**: inserisci la
-   stessa chiave API Anthropic (o lasciala vuota se non vuoi che usino la
-   pulizia AI — funzionerà comunque con il metodo di fallback), controlla i
-   siti competitor e la cartella di salvataggio report (es. il Desktop del
-   collega), poi **Salva**.
+### Requirements on the end-user machine
 
-A questo punto il collega deve solo:
+- **Google Chrome** installed (standard version, nothing else needed)
+- **Internet connection** (to scrape competitor sites and, on first run, to auto-download the matching ChromeDriver)
 
-1. Doppio click sull'icona
-2. **1. Catalogo** → scegliere il file CSV esportato da Shopify
-3. **2. Selezione prodotti** → scegliere "Tutti", per parola chiave o per
-   brand
-4. **3. Analisi** → premere "Avvia analisi" e aspettare
-5. **4. Risultati** → vedere i prodotti da rivedere e aprire il report
-
-### Requisiti sul PC del collega
-
-- **Google Chrome installato** (la versione normale, non serve altro)
-- **Connessione internet** (per cercare sui siti competitor e, la prima
-  volta, per scaricare automaticamente il driver di Chrome compatibile)
-
-Non serve installare Python, né altre librerie: tutto è incluso nel `.exe`.
+No Python or additional libraries required — everything is bundled in the `.exe`.
 
 ---
 
-## 6. Aggiornare l'app in futuro
+## 6. Updating the App
 
-Quando vuoi aggiungere nuovi siti competitor o modificare la logica:
+When you want to add new competitor sites or change the logic:
 
-1. Modifica `core.py` (logica) o `gui_app.py` (interfaccia)
-2. Rilancia `pyinstaller CompetitorPriceChecker.spec`
-3. Sostituisci la cartella `dist\CompetitorPriceChecker` sui PC dei
-   colleghi (le loro impostazioni in `%APPDATA%` non vengono toccate)
+1. Edit `core.py` (logic) or `gui_app.py` (interface)
+2. Re-run `pyinstaller CompetitorPriceChecker.spec`
+3. Replace the `dist\CompetitorPriceChecker` folder on target machines (their settings in `%APPDATA%` are untouched)
 
-Per aggiungere nuovi siti competitor **senza ricompilare**, basta che tu
-(o anche il titolare) li scriva nella schermata Impostazioni → "Siti
-competitor da controllare", uno per riga. Se il sito ha un motore di ricerca
-interno diverso da `/search?q=...`, però, ti serve modificare anche
-`SEARCH_URLS` in `core.py` e rifare il build.
+To add new competitor sites **without rebuilding**, just add them in Settings → "Competitor sites to check", one per line. If a site uses a non-standard search URL (different from `/search?q=...`), you'll need to update `SEARCH_URLS` in `core.py` and rebuild.
 
 ---
 
-## 7. Note su prestazioni e limiti
+## 7. Performance & Limitations
 
-- Il browser viene avviato in modalità invisibile ("headless"): i colleghi
-  non vedranno finestre di Chrome che si aprono.
-- **Velocità**: per ogni prodotto, i siti competitor vengono controllati
-  TUTTI IN PARALLELO (un browser separato per ciascun sito, riutilizzato
-  per tutto il catalogo). Le pagine vengono considerate "pronte" non appena
-  il contenuto principale è caricato (`page_load_strategy = "eager"`), senza
-  aspettare pubblicità, tracker o script secondari — questo è il fattore che
-  in precedenza causava le attese più lunghe. Con 4 siti, un prodotto richiede
-  ora circa 3-8 secondi (anziché 1-3+ minuti).
-- Se un sito è particolarmente lento o irraggiungibile, dopo `PAGE_TIMEOUT`
-  secondi (10 di default, modificabile in `core.py`) viene saltato per quel
-  prodotto, senza bloccare gli altri siti.
-- Il pulsante "Interrompi" ferma l'analisi al termine del prodotto in corso
-  (non istantaneamente) e salva comunque un report parziale.
-- La soglia "% in meno" in fase di analisi permette di nascondere differenze
-  di prezzo trascurabili (es. impostando 3%, un competitor che costa solo
-  l'1% in meno non genera un alert).
-- Con cataloghi molto grandi conviene comunque usare la selezione per brand
-  o parola chiave, per analizzare solo i prodotti di interesse.
+- Chrome runs in headless mode — no visible browser windows.
+- **Speed**: competitor sites are checked **in parallel** for each product (one browser instance per site, reused across the full catalog). Pages are considered ready as soon as the main content loads (`page_load_strategy = "eager"`), skipping ads, trackers, and secondary scripts — previously the main source of delays. With 4 sites, each product now takes ~3–8 seconds (down from 1–3+ minutes).
+- If a site is slow or unreachable, it's skipped for that product after `PAGE_TIMEOUT` seconds (default: 10, configurable in `core.py`), without blocking the other sites.
+- The "Stop" button halts the analysis after the current product finishes (not immediately) and still saves a partial report.
+- The "% cheaper" threshold hides negligible price differences (e.g. with 3%, a competitor that's only 1% cheaper won't trigger an alert).
+- For large catalogs, filtering by brand or keyword before running the analysis is recommended.
