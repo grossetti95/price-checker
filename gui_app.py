@@ -80,7 +80,7 @@ class Sidebar(ctk.CTkFrame):
 
         logo_img = ctk.CTkImage(
             light_image=Image.open(resource_path("logo.png")),
-            size=(160, 120)                        # ← adjust to your logo's proportions
+            size=(160, 155)                        # ← adjust to your logo's proportions
         )
         ctk.CTkLabel(self, image=logo_img, text="").pack(
             anchor="w", padx=20, pady=(28, 24))
@@ -209,12 +209,12 @@ class SelezioneFrame(ctk.CTkFrame):
         self,
         values=["Tutti i prodotti", "Per parola chiave", "Per brand"],
         command=self.on_mode_change,
-        fg_color="#d0f0ec",
-        selected_color="#1a8a7a",
-        selected_hover_color="#00b4d8",
-        unselected_color="#d0f0ec",
-        unselected_hover_color="#a8e6df",
-        text_color="#1a8a7a",
+        fg_color="#1a8a7a",
+        selected_color="#00b4d8",
+        selected_hover_color="#0099bb",
+        unselected_color="#1a8a7a",
+        unselected_hover_color="#00b4d8",
+        text_color="#ffffff",
         text_color_disabled="#9a9a9a",
     )
         mode_bar.set("Tutti i prodotti")
@@ -372,9 +372,9 @@ class SelezioneFrame(ctk.CTkFrame):
             vendor    = f"  ·  {row['Vendor']}" if pd_notna(row.get("Vendor")) else ""
             text = f"{row['Title']}   —   {price_str}{vendor}"
             cb = ctk.CTkCheckBox(
-                self.results_frame, text=text, variable=var, font=FONT_SMALL,
-                text_color="#ffffff", command=self._update_count,
-            )
+            self.results_frame, text=text, variable=var, font=FONT_SMALL,
+            text_color="#1a8a7a", command=self._update_count,
+        )
             cb.pack(anchor="w", padx=10, pady=4)
 
         self._apply_keyword_selection()
@@ -432,7 +432,7 @@ class SelezioneFrame(ctk.CTkFrame):
             self.brand_vars[brand] = var
             cb = ctk.CTkCheckBox(
                 scroll, text=f"{brand}   ({count})", variable=var, font=FONT_SMALL,
-                text_color="#ffffff", command=self._apply_brand_selection,
+                text_color="#1a8a7a", command=self._apply_brand_selection,
             )
             cb.pack(anchor="w", padx=10, pady=3)
 
