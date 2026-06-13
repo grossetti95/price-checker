@@ -1,21 +1,20 @@
-# Competitor Price Checker — Desktop GUI
+# Spryce — Competitor Price Checker
 
-Desktop application with a graphical interface for comparing Shopify catalog prices against competitor websites.
+Desktop application with a graphical interface for comparing Shopify catalog prices against competitor websites. Built with Python, CustomTkinter, and Selenium.
 
 ## Project Structure
 
 ```
-CompetitorPriceChecker/
+Spryce/
 ├── core.py                     # business logic (CSV, Selenium, AI, reports)
 ├── config.py                   # local settings management
 ├── gui_app.py                  # GUI entry point
 ├── logo.png                    # shop logo displayed in the sidebar
+├── icon.ico                    # app icon (titlebar + .exe)
+├── icon.png                    # app icon (taskbar, runtime)
 ├── requirements.txt
-├── CompetitorPriceChecker.spec # PyInstaller configuration
-└── icon.ico                    # (optional) app icon
+├── Spryce.spec                 # PyInstaller configuration
 ```
-
-The old `price_checker.py` and `ui.py` (terminal version) are no longer needed — all logic has been moved to `core.py` and wired to the new interface.
 
 ---
 
@@ -25,6 +24,8 @@ The old `price_checker.py` and `ui.py` (terminal version) are no longer needed �
 - **Python 3.11 or 3.12** ([python.org](https://www.python.org/downloads/) — check "Add Python to PATH" during install)
 - **Google Chrome** installed (required both for testing and on end-user machines: the script drives it headlessly)
 
+---
+
 ## 2. Environment Setup
 
 ⚠️ **Use a clean Python environment, NOT an Anaconda base env**. Anaconda base includes hundreds of libraries (Jupyter, matplotlib, PyQt5 *and* PySide6, sphinx, etc.) that PyInstaller tries to bundle, causing very slow builds, huge output, and errors like:
@@ -33,8 +34,6 @@ The old `price_checker.py` and `ui.py` (terminal version) are no longer needed �
 ERROR: Aborting build process due to attempt to collect multiple Qt
 bindings packages: ... PyQt5 ... PySide6 ...
 ```
-
-The updated `.spec` already excludes these libraries as a safeguard, but it's much better to start from a dedicated, lean environment.
 
 Open PowerShell in the project folder and create a virtual environment:
 
@@ -46,37 +45,72 @@ pip install -r requirements.txt
 
 (If only Anaconda is installed and `python` isn't in PATH, use
 `C:\Users\YOUR_USER\anaconda3\python.exe -m venv venv` to create the venv,
-then activate it normally with `venv\Scripts\activate`.)
+then activate normally with `venv\Scripts\activate`.)
 
-## 3. Logo Setup
+---
 
-The sidebar displays a shop logo loaded from `logo.png` in the project root. To customise it for a different shop:
+## 3. Customizing for a New Shop
 
-1. Place the new logo as `logo.png` in the same folder as `gui_app.py`. The file must be a valid PNG (if in doubt, re-export it from any image editor as PNG).
-
-2. In `gui_app.py`, find the `CTkImage` call inside `Sidebar.__init__` and adjust the `size` parameter to match the logo's aspect ratio:
+### Logo
+Place the shop logo as `logo.png` in the project root. It must be a valid PNG file (re-export from any image editor if unsure). In `gui_app.py`, adjust the `size` parameter inside `Sidebar.__init__` to match the logo's proportions:
 
 ```python
 logo_img = ctk.CTkImage(
     light_image=Image.open(resource_path("logo.png")),
-    size=(160, 101)   # ← width, height in pixels — adjust to your logo's proportions
+    size=(160, 120)   # ← adjust width/height to your logo's proportions
 )
 ```
 
-3. The `resource_path()` helper (defined just above the `Sidebar` class) ensures the logo is found both during development and inside the compiled `.exe`. Do not replace it with a plain `open("logo.png")`.
+Always use `resource_path()` when opening the logo — it ensures the file is found both during development and inside the compiled `.exe`.
 
-4. The `.spec` file already contains the line that tells PyInstaller to bundle the logo:
+### Colors
+All UI colors are defined at the top of `gui_app.py` (lines 31–43):
+
+```python
+ctk.ThemeManager.theme["CTkButton"]["fg_color"]    = ["#1a8a7a", "#1a8a7a"]
+ctk.ThemeManager.theme["CTkButton"]["hover_color"] = ["#00b4d8", "#00b4d8"]
+
+ACCENT_GREEN  = "#1a8a7a"   # teal — confirm actions, success states
+ACCENT_RED    = "#e05555"   # red  — alerts, stop button
+ACCENT_YELLOW = "#00b4d8"   # cyan — highlights, warnings
+MUTED         = "#9a9a9a"   # grey — subtle labels
+```
+
+The sidebar background is set in `Sidebar.__init__` (`fg_color`), and frame/card backgrounds are set per-frame as `fg_color` on each `CTkFrame`. Use `Ctrl+H` in VSCode to do bulk replacements when rebranding.
+
+### App Name
+- Window title: `self.title(...)` in `App.__init__` in `gui_app.py`
+- Footer text: `text="Copyright 2026 ..."` in `App.__init__`
+- Config folder: `APP_NAME = "Spryce"` in `config.py` (changing this moves the config file to `%APPDATA%\<new name>\`)
+- Output exe name: `name='Spryce'` in the `.spec` file
+
+### CSV Default Folder
+The file picker opens by default in `C:\Program Files\Spryce\CSV` (set in `config.py`):
+
+```python
+"last_csv_dir": r"C:\Program Files\Spryce\CSV",
+```
+
+This folder is created automatically on first launch if it doesn't exist. Change this path to match the target machine's preferred location.
+
+### Icons
+- `icon.ico` — used by PyInstaller for the `.exe` icon and title bar (must include sizes 16, 32, 48, 256px)
+- `icon.png` — used at runtime for the taskbar icon (256×256px recommended)
+
+To generate a valid `.ico` from a PNG using Pillow:
+
+```python
+from PIL import Image
+img = Image.open("logo.png").convert("RGBA")
+img.save("icon.ico", format="ICO", sizes=[(16,16),(32,32),(48,48),(256,256)])
+```
+
+Both files must be listed in the `.spec` datas:
 
 ```python
 datas.append(("logo.png", "."))
-```
-
-If you rename the file, update this line and the `Image.open(...)` call accordingly.
-
-⚠️ **`Pillow` must be in `requirements.txt`** — it is used to load the logo image. If it is missing, add it:
-
-```
-Pillow>=10.0.0
+datas.append(("icon.ico", "."))
+datas.append(("icon.png", "."))
 ```
 
 ---
@@ -89,33 +123,35 @@ Run the app locally to verify everything works:
 python gui_app.py
 ```
 
-Go to the **⚙ Settings** screen and:
+Go to the **⚙ Impostazioni** screen and:
 - enter your Anthropic API key (used for AI-based title normalization)
 - check/set the folder where reports will be saved
 - review the competitor sites list (one per line)
-- click **Save settings**
+- click **Salva impostazioni**
 
-This configuration is written to a local file (NOT embedded in the code, so it will never end up in the `.exe`):
+Settings are saved locally and never bundled into the `.exe`:
 
 ```
-%APPDATA%\CompetitorPriceChecker\config.json
+%APPDATA%\Spryce\config.json
 ```
+
+---
 
 ## 5. Building the `.exe`
 
-With the virtual environment still active:
+With the virtual environment active:
 
 ```powershell
-pyinstaller CompetitorPriceChecker.spec
+pyinstaller Spryce.spec
 ```
 
 The output will be in:
 
 ```
-dist\CompetitorPriceChecker\
+dist\Spryce\
 ```
 
-That folder (which can be zipped) is the complete app: it contains `CompetitorPriceChecker.exe` plus all required libraries and the logo.
+That folder (which can be zipped) is the complete app: it contains `Spryce.exe` plus all required libraries, the logo, and the icons.
 
 ⚠️ **Important**: distribute the entire folder, not just the `.exe` — it won't launch otherwise.
 
@@ -124,10 +160,10 @@ That folder (which can be zipped) is the complete app: it contains `CompetitorPr
 ## 6. Usage
 
 1. Double-click the app icon
-2. **1. Catalog** → select the CSV exported from Shopify
-3. **2. Product Selection** → choose All, by keyword, or by brand
-4. **3. Analysis** → click "Start analysis" and wait
-5. **4. Results** → review flagged products and open the report
+2. **1. Catalogo** → select the CSV exported from Shopify (Prodotti → Esporta)
+3. **2. Selezione prodotti** → choose All, by keyword, or by brand
+4. **3. Analisi** → click "Avvia analisi" and wait
+5. **4. Risultati** → review flagged products and open the report
 
 ### Requirements on the end-user machine
 
@@ -140,21 +176,25 @@ No Python or additional libraries required — everything is bundled in the `.ex
 
 ## 7. Updating the App
 
-When you want to add new competitor sites or change the logic:
+When you want to change logic or add competitor sites:
 
 1. Edit `core.py` (logic) or `gui_app.py` (interface)
-2. Re-run `pyinstaller CompetitorPriceChecker.spec`
-3. Replace the `dist\CompetitorPriceChecker` folder on target machines (their settings in `%APPDATA%` are untouched)
+2. Re-run `pyinstaller Spryce.spec`
+3. Replace the `dist\Spryce` folder on target machines (their settings in `%APPDATA%\Spryce` are untouched)
 
-To add new competitor sites **without rebuilding**, just add them in Settings → "Competitor sites to check", one per line. If a site uses a non-standard search URL (different from `/search?q=...`), you'll need to update `SEARCH_URLS` in `core.py` and rebuild.
+To add competitor sites **without rebuilding**, add them in Impostazioni → "Siti competitor da controllare", one per line. If a site uses a non-standard search URL (different from `/search?q=...`), update `SEARCH_URLS` in `core.py` and rebuild.
 
 ---
 
 ## 8. Performance & Limitations
 
 - Chrome runs in headless mode — no visible browser windows.
-- **Speed**: competitor sites are checked **in parallel** for each product (one browser instance per site, reused across the full catalog). Pages are considered ready as soon as the main content loads (`page_load_strategy = "eager"`), skipping ads, trackers, and secondary scripts — previously the main source of delays. With 4 sites, each product now takes ~3–8 seconds (down from 1–3+ minutes).
-- If a site is slow or unreachable, it's skipped for that product after `PAGE_TIMEOUT` seconds (default: 10, configurable in `core.py`), without blocking the other sites.
-- The "Stop" button halts the analysis after the current product finishes (not immediately) and still saves a partial report.
-- The "% cheaper" threshold hides negligible price differences (e.g. with 3%, a competitor that's only 1% cheaper won't trigger an alert).
+- **Speed**: competitor sites are checked **in parallel** for each product (one browser instance per site, reused across the full catalog). Pages are considered ready as soon as the main content loads (`page_load_strategy = "eager"`). With 4 sites, each product takes ~3–8 seconds.
+- If a site is slow or unreachable, it is skipped for that product after `PAGE_TIMEOUT` seconds (default: 10, configurable in `core.py`).
+- The "Interrompi" button halts the analysis after the current product finishes and saves a partial report.
+- The "% in meno" threshold hides negligible price differences (e.g. with 3%, a competitor only 1% cheaper won't trigger an alert).
 - For large catalogs, filtering by brand or keyword before running the analysis is recommended.
+
+---
+
+*Spryce — developed by Giuseppe Rossetti · [kaindevelop.com](https://kaindevelop.com)*
