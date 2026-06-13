@@ -57,7 +57,7 @@ def load_config() -> dict:
             pass
 
     # Se la cartella di output salvata non esiste più, torna al Desktop/Home
-    if not os.path.isdir(cfg.get("output_dir", "")):
+    if not cfg.get("output_dir"):
         cfg["output_dir"] = str(Path.home() / "Desktop") if (Path.home() / "Desktop").exists() else str(Path.home())
 
     return cfg

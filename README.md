@@ -9,6 +9,7 @@ CompetitorPriceChecker/
 ├── core.py                     # business logic (CSV, Selenium, AI, reports)
 ├── config.py                   # local settings management
 ├── gui_app.py                  # GUI entry point
+├── logo.png                    # shop logo displayed in the sidebar
 ├── requirements.txt
 ├── CompetitorPriceChecker.spec # PyInstaller configuration
 └── icon.ico                    # (optional) app icon
@@ -47,7 +48,40 @@ pip install -r requirements.txt
 `C:\Users\YOUR_USER\anaconda3\python.exe -m venv venv` to create the venv,
 then activate it normally with `venv\Scripts\activate`.)
 
-## 3. Quick Test Before Building
+## 3. Logo Setup
+
+The sidebar displays a shop logo loaded from `logo.png` in the project root. To customise it for a different shop:
+
+1. Place the new logo as `logo.png` in the same folder as `gui_app.py`. The file must be a valid PNG (if in doubt, re-export it from any image editor as PNG).
+
+2. In `gui_app.py`, find the `CTkImage` call inside `Sidebar.__init__` and adjust the `size` parameter to match the logo's aspect ratio:
+
+```python
+logo_img = ctk.CTkImage(
+    light_image=Image.open(resource_path("logo.png")),
+    size=(160, 101)   # ← width, height in pixels — adjust to your logo's proportions
+)
+```
+
+3. The `resource_path()` helper (defined just above the `Sidebar` class) ensures the logo is found both during development and inside the compiled `.exe`. Do not replace it with a plain `open("logo.png")`.
+
+4. The `.spec` file already contains the line that tells PyInstaller to bundle the logo:
+
+```python
+datas.append(("logo.png", "."))
+```
+
+If you rename the file, update this line and the `Image.open(...)` call accordingly.
+
+⚠️ **`Pillow` must be in `requirements.txt`** — it is used to load the logo image. If it is missing, add it:
+
+```
+Pillow>=10.0.0
+```
+
+---
+
+## 4. Quick Test Before Building
 
 Run the app locally to verify everything works:
 
@@ -67,7 +101,7 @@ This configuration is written to a local file (NOT embedded in the code, so it w
 %APPDATA%\CompetitorPriceChecker\config.json
 ```
 
-## 4. Building the `.exe`
+## 5. Building the `.exe`
 
 With the virtual environment still active:
 
@@ -81,13 +115,13 @@ The output will be in:
 dist\CompetitorPriceChecker\
 ```
 
-That folder (which can be zipped) is the complete app: it contains `CompetitorPriceChecker.exe` plus all required libraries.
+That folder (which can be zipped) is the complete app: it contains `CompetitorPriceChecker.exe` plus all required libraries and the logo.
 
 ⚠️ **Important**: distribute the entire folder, not just the `.exe` — it won't launch otherwise.
 
 ---
 
-## 5. Usage
+## 6. Usage
 
 1. Double-click the app icon
 2. **1. Catalog** → select the CSV exported from Shopify
@@ -104,7 +138,7 @@ No Python or additional libraries required — everything is bundled in the `.ex
 
 ---
 
-## 6. Updating the App
+## 7. Updating the App
 
 When you want to add new competitor sites or change the logic:
 
@@ -116,7 +150,7 @@ To add new competitor sites **without rebuilding**, just add them in Settings �
 
 ---
 
-## 7. Performance & Limitations
+## 8. Performance & Limitations
 
 - Chrome runs in headless mode — no visible browser windows.
 - **Speed**: competitor sites are checked **in parallel** for each product (one browser instance per site, reused across the full catalog). Pages are considered ready as soon as the main content loads (`page_load_strategy = "eager"`), skipping ads, trackers, and secondary scripts — previously the main source of delays. With 4 sites, each product now takes ~3–8 seconds (down from 1–3+ minutes).

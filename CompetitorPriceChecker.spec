@@ -25,6 +25,7 @@ datas = []
 # importato, che funziona sempre.
 import customtkinter
 _ctk_dir = os.path.dirname(customtkinter.__file__)
+datas.append(("logo.png", "."))
 datas.append((_ctk_dir, "customtkinter"))
 
 hiddenimports = []

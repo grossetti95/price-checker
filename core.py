@@ -612,7 +612,6 @@ def run_analysis(
         write_txt_report(result.alerts_data, result.total, result.no_match, output_path)
         result.report_path = output_path
     except Exception as e:
-        if log_cb:
-            log_cb(f"Errore durante il salvataggio del report: {e}")
+        result.errore = f"Errore salvataggio report: {e}"
 
     return result

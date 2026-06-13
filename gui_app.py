@@ -16,16 +16,19 @@ import queue
 import subprocess
 import sys
 import threading
-from tkinter import filedialog, messagebox
-
 import customtkinter as ctk
-
 import config
 import core
+import customtkinter as ctk
+from PIL import Image
+from tkinter import filedialog, messagebox
 
+# Setting 
 
-ctk.set_appearance_mode("light")
-ctk.set_default_color_theme("blue")
+ctk.set_appearance_mode("dark")
+ctk.set_default_color_theme("dark-blue")
+ctk.ThemeManager.theme["CTkButton"]["fg_color"] = ["#1f9d55", "#1f9d55"]
+ctk.ThemeManager.theme["CTkButton"]["hover_color"] = ["#c0392b", "#c0392b"]
 
 FONT_TITLE   = ("Segoe UI", 20, "bold")
 FONT_SUBTLE  = ("Segoe UI", 12)
@@ -33,10 +36,10 @@ FONT_NORMAL  = ("Segoe UI", 13)
 FONT_BOLD    = ("Segoe UI", 13, "bold")
 FONT_SMALL   = ("Segoe UI", 11)
 
-ACCENT_GREEN  = "#1f9d55"
-ACCENT_RED    = "#d64545"
-ACCENT_YELLOW = "#d98c00"
-MUTED         = "#7a7a7a"
+ACCENT_GREEN  = "#4caf82"
+ACCENT_RED    = "#e05555"
+ACCENT_YELLOW = "#e6a817"
+MUTED         = "#d3d3d3"
 
 
 def open_path(path: str):
@@ -56,6 +59,10 @@ def open_path(path: str):
 # SIDEBAR
 # ──────────────────────────────────────────────────────────────────────────
 
+def resource_path(relative_path: str) -> str:
+    """Returns the correct path both in dev and when bundled by PyInstaller."""
+    base = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base, relative_path)
 class Sidebar(ctk.CTkFrame):
     STEPS = [
         ("catalogo",   "1.  Catalogo"),
@@ -66,21 +73,22 @@ class Sidebar(ctk.CTkFrame):
     ]
 
     def __init__(self, master, on_select):
-        super().__init__(master, width=210, corner_radius=0, fg_color="#f4f5f7")
+        super().__init__(master, width=210, corner_radius=0, fg_color="#424242")
         self.on_select = on_select
         self.buttons: dict[str, ctk.CTkButton] = {}
 
-        ctk.CTkLabel(self, text="Competitor\nPrice Checker",
-                      font=FONT_TITLE, justify="left").pack(
-            anchor="w", padx=20, pady=(28, 6))
-        ctk.CTkLabel(self, text="Outdoor Ecommerce", font=FONT_SUBTLE,
-                      text_color=MUTED).pack(anchor="w", padx=20, pady=(0, 24))
+        logo_img = ctk.CTkImage(
+            light_image=Image.open("logo.png"),   # ← your logo file path here
+            size=(160, 120)                        # ← adjust to your logo's proportions
+        )
+        ctk.CTkLabel(self, image=logo_img, text="").pack(
+            anchor="w", padx=20, pady=(28, 24))
 
         for key, label in self.STEPS:
             btn = ctk.CTkButton(
                 self, text=label, anchor="w", height=40,
                 font=FONT_NORMAL, fg_color="transparent",
-                text_color="#222222", hover_color="#e6e8eb",
+                text_color="#ffffff", hover_color="#ffffff",
                 corner_radius=8,
                 command=lambda k=key: self.on_select(k),
             )
@@ -92,7 +100,7 @@ class Sidebar(ctk.CTkFrame):
     def set_active(self, key: str):
         for k, btn in self.buttons.items():
             if k == key:
-                btn.configure(fg_color="#dde7ff", text_color="#1a4fd6")
+                btn.configure(fg_color="#2e2e2e", text_color="#ffffff")
             else:
                 btn.configure(fg_color="transparent", text_color="#222222")
 
@@ -106,7 +114,7 @@ class Sidebar(ctk.CTkFrame):
 
 class CatalogoFrame(ctk.CTkFrame):
     def __init__(self, master, app):
-        super().__init__(master, fg_color="white")
+        super().__init__(master, fg_color="#212121")
         self.app = app
 
         ctk.CTkLabel(self, text="1. Carica il catalogo", font=FONT_TITLE).pack(
@@ -117,7 +125,7 @@ class CatalogoFrame(ctk.CTkFrame):
             font=FONT_SUBTLE, text_color=MUTED,
         ).pack(anchor="w", padx=40, pady=(0, 24))
 
-        box = ctk.CTkFrame(self, fg_color="#f7f8fa", corner_radius=12)
+        box = ctk.CTkFrame(self, fg_color="#2a2a2a", corner_radius=12)
         box.pack(fill="x", padx=40, pady=10)
 
         ctk.CTkButton(
@@ -185,7 +193,7 @@ class CatalogoFrame(ctk.CTkFrame):
 
 class SelezioneFrame(ctk.CTkFrame):
     def __init__(self, master, app):
-        super().__init__(master, fg_color="white")
+        super().__init__(master, fg_color="#212121")
         self.app = app
         self.checkbox_vars: dict[int, ctk.BooleanVar] = {}
         self.current_pool = None  # dataframe attualmente mostrato (per parola chiave)
@@ -197,10 +205,16 @@ class SelezioneFrame(ctk.CTkFrame):
 
         self.mode_var = ctk.StringVar(value="tutti")
         mode_bar = ctk.CTkSegmentedButton(
-            self,
-            values=["Tutti i prodotti", "Per parola chiave", "Per brand"],
-            command=self.on_mode_change,
-        )
+        self,
+        values=["Tutti i prodotti", "Per parola chiave", "Per brand"],
+        command=self.on_mode_change,
+        fg_color="#2a2a2a",
+        selected_color="#1f9d55",
+        selected_hover_color="#177a42",
+        unselected_color="#2a2a2a",
+        unselected_hover_color="#3a3a3a",
+        text_color="#ffffff",
+    )
         mode_bar.set("Tutti i prodotti")
         mode_bar.pack(anchor="w", padx=40, pady=(0, 16))
         self.mode_bar = mode_bar
@@ -246,7 +260,7 @@ class SelezioneFrame(ctk.CTkFrame):
     # ── Modalità: tutti ─────────────────────────────────────────────────────
     def _build_tutti(self):
         df = self.app.df
-        info = ctk.CTkFrame(self.content, fg_color="#f7f8fa", corner_radius=12)
+        info = ctk.CTkFrame(self.content, fg_color="#2a2a2a", corner_radius=12)
         info.pack(fill="x", pady=10)
         ctk.CTkLabel(
             info,
@@ -284,17 +298,17 @@ class SelezioneFrame(ctk.CTkFrame):
         sel_row.pack(fill="x")
         self.sel_all_btn = ctk.CTkButton(
             sel_row, text="Seleziona tutti", width=140, height=30, font=FONT_SMALL,
-            fg_color="transparent", border_width=1, text_color="#222",
+            fg_color="#1f9d55", hover_color="#c0392b", border_width=1, text_color="#ffffff",
             command=lambda: self._set_all_checks(True),
         )
         self.desel_all_btn = ctk.CTkButton(
             sel_row, text="Deseleziona tutti", width=140, height=30, font=FONT_SMALL,
-            fg_color="transparent", border_width=1, text_color="#222",
+            fg_color="#1f9d55", hover_color="#c0392b", border_width=1, text_color="#ffffff",
             command=lambda: self._set_all_checks(False),
         )
 
         self.results_frame = ctk.CTkScrollableFrame(
-            self.content, fg_color="#f7f8fa", corner_radius=12, height=320,
+            self.content, fg_color="#2a2a2a", corner_radius=12, height=320,
         )
         self.results_frame.pack(fill="both", expand=True, pady=10)
 
@@ -357,7 +371,7 @@ class SelezioneFrame(ctk.CTkFrame):
             text = f"{row['Title']}   —   {price_str}{vendor}"
             cb = ctk.CTkCheckBox(
                 self.results_frame, text=text, variable=var, font=FONT_SMALL,
-                command=self._update_count,
+                text_color="#ffffff", command=self._update_count,
             )
             cb.pack(anchor="w", padx=10, pady=4)
 
@@ -395,17 +409,17 @@ class SelezioneFrame(ctk.CTkFrame):
         sel_row.pack(fill="x")
         ctk.CTkButton(
             sel_row, text="Seleziona tutti", width=140, height=30, font=FONT_SMALL,
-            fg_color="transparent", border_width=1, text_color="#222",
+            fg_color="#1f9d55", hover_color="#c0392b", border_width=1, text_color="#ffffff",
             command=lambda: self._set_all_brand_checks(True),
         ).pack(side="left", pady=(2, 6))
         ctk.CTkButton(
             sel_row, text="Deseleziona tutti", width=140, height=30, font=FONT_SMALL,
-            fg_color="transparent", border_width=1, text_color="#222",
+            fg_color="#1f9d55", hover_color="#c0392b", border_width=1, text_color="#ffffff",
             command=lambda: self._set_all_brand_checks(False),
         ).pack(side="left", padx=(8, 0), pady=(2, 6))
 
         scroll = ctk.CTkScrollableFrame(
-            self.content, fg_color="#f7f8fa", corner_radius=12, height=320,
+            self.content, fg_color="#2a2a2a", corner_radius=12, height=320,
         )
         scroll.pack(fill="both", expand=True, pady=10)
 
@@ -416,7 +430,7 @@ class SelezioneFrame(ctk.CTkFrame):
             self.brand_vars[brand] = var
             cb = ctk.CTkCheckBox(
                 scroll, text=f"{brand}   ({count})", variable=var, font=FONT_SMALL,
-                command=self._apply_brand_selection,
+                text_color="#ffffff", command=self._apply_brand_selection,
             )
             cb.pack(anchor="w", padx=10, pady=3)
 
@@ -468,7 +482,7 @@ def pd_notna(value) -> bool:
 
 class AnalisiFrame(ctk.CTkFrame):
     def __init__(self, master, app):
-        super().__init__(master, fg_color="white")
+        super().__init__(master, fg_color="#212121")
         self.app = app
         self.stop_event = None
         self.msg_queue: "queue.Queue" = queue.Queue()
@@ -481,7 +495,7 @@ class AnalisiFrame(ctk.CTkFrame):
         self.summary_label.pack(anchor="w", padx=40, pady=(0, 16))
 
         # ── Opzioni ──────────────────────────────────────────────────────────
-        opts = ctk.CTkFrame(self, fg_color="#f7f8fa", corner_radius=12)
+        opts = ctk.CTkFrame(self, fg_color="#2a2a2a", corner_radius=12)
         opts.pack(fill="x", padx=40, pady=(0, 16))
 
         row1 = ctk.CTkFrame(opts, fg_color="transparent")
@@ -521,7 +535,7 @@ class AnalisiFrame(ctk.CTkFrame):
         self.stop_btn.pack(side="left", padx=10)
 
         # ── Progresso ────────────────────────────────────────────────────────
-        prog_box = ctk.CTkFrame(self, fg_color="#f7f8fa", corner_radius=12)
+        prog_box = ctk.CTkFrame(self, fg_color="#2a2a2a", corner_radius=12)
         prog_box.pack(fill="x", padx=40, pady=10)
 
         self.progress_bar = ctk.CTkProgressBar(prog_box, height=14)
@@ -545,7 +559,7 @@ class AnalisiFrame(ctk.CTkFrame):
         # ── Log alert live ──────────────────────────────────────────────────
         ctk.CTkLabel(self, text="Prodotti più cari trovati durante l'analisi:",
                       font=FONT_BOLD).pack(anchor="w", padx=40, pady=(6, 6))
-        self.live_alerts = ctk.CTkScrollableFrame(self, fg_color="#f7f8fa",
+        self.live_alerts = ctk.CTkScrollableFrame(self, fg_color="#2a2a2a",
                                                      corner_radius=12, height=160)
         self.live_alerts.pack(fill="both", expand=True, padx=40, pady=(0, 20))
 
@@ -594,7 +608,6 @@ class AnalisiFrame(ctk.CTkFrame):
         api_key = self.app.cfg.get("anthropic_api_key") or None
         sites   = self.app.cfg.get("competitor_sites", core.DEFAULT_COMPETITOR_SITES)
         out_dir = self.app.cfg.get("output_dir") or os.path.expanduser("~")
-
         self.running = True
         self.stop_event = threading.Event()
         self.start_btn.configure(state="disabled")
@@ -672,7 +685,7 @@ class AnalisiFrame(ctk.CTkFrame):
         cheapest = min(cheaper, key=lambda x: x["price"])
         diff_pct = (entry["my_price"] - cheapest["price"]) / entry["my_price"] * 100
 
-        card = ctk.CTkFrame(self.live_alerts, fg_color="white", corner_radius=8)
+        card = ctk.CTkFrame(self.live_alerts, fg_color="#212121", corner_radius=8)
         card.pack(fill="x", padx=6, pady=4)
 
         title = entry["title"]
@@ -719,7 +732,7 @@ class AnalisiFrame(ctk.CTkFrame):
 
 class RisultatiFrame(ctk.CTkFrame):
     def __init__(self, master, app):
-        super().__init__(master, fg_color="white")
+        super().__init__(master, fg_color="#212121")
         self.app = app
 
         ctk.CTkLabel(self, text="4. Risultati", font=FONT_TITLE).pack(
@@ -732,28 +745,28 @@ class RisultatiFrame(ctk.CTkFrame):
         btn_row.pack(fill="x", padx=40, pady=(0, 16))
 
         self.open_report_btn = ctk.CTkButton(
-            btn_row, text="📄  Apri report (.txt)", font=FONT_BOLD, height=42,
+            btn_row, text="📄  Apri report (.txt)", font=FONT_BOLD, height=42, fg_color="#1f9d55", hover_color="#c0392b",
             command=self._open_report,
         )
         self.open_report_btn.pack(side="left")
 
         self.open_folder_btn = ctk.CTkButton(
             btn_row, text="📁  Apri cartella report", font=FONT_BOLD, height=42,
-            fg_color="transparent", border_width=1, text_color="#222",
+            fg_color="#1f9d55", hover_color="#c0392b", border_width=1, text_color="#ffffff",
             command=self._open_folder,
         )
         self.open_folder_btn.pack(side="left", padx=10)
 
         ctk.CTkButton(
             btn_row, text="↺  Nuova analisi", font=FONT_BOLD, height=42,
-            fg_color="transparent", border_width=1, text_color="#222",
+            fg_color="#1f9d55", text_color="#ffffff", hover_color="#c0392b", border_width=1,
             command=lambda: app.show("selezione"),
         ).pack(side="right")
 
         ctk.CTkLabel(self, text="Dettaglio prodotti più cari della concorrenza:",
                       font=FONT_BOLD).pack(anchor="w", padx=40, pady=(6, 6))
 
-        self.scroll = ctk.CTkScrollableFrame(self, fg_color="#f7f8fa", corner_radius=12)
+        self.scroll = ctk.CTkScrollableFrame(self, fg_color="#2a2a2a", corner_radius=12)
         self.scroll.pack(fill="both", expand=True, padx=40, pady=(0, 30))
 
     def refresh(self):
@@ -777,7 +790,7 @@ class RisultatiFrame(ctk.CTkFrame):
                   f"Tempo: {m:02d}:{s:02d}")
         )
 
-        has_report = bool(result.report_path and os.path.exists(result.report_path))
+        has_report = bool(result.report_path)
         self.open_report_btn.configure(state="normal" if has_report else "disabled")
         self.open_folder_btn.configure(state="normal" if has_report else "disabled")
 
@@ -800,7 +813,7 @@ class RisultatiFrame(ctk.CTkFrame):
         diff_pct  = (entry["my_price"] - cheapest["price"]) / entry["my_price"] * 100
         suggested = round(cheapest["price"] * 0.99, 2)
 
-        card = ctk.CTkFrame(self.scroll, fg_color="white", corner_radius=10)
+        card = ctk.CTkFrame(self.scroll, fg_color="#212121", corner_radius=10)
         card.pack(fill="x", padx=6, pady=6)
 
         ctk.CTkLabel(card, text=entry["title"], font=FONT_BOLD, anchor="w",
@@ -854,7 +867,7 @@ class RisultatiFrame(ctk.CTkFrame):
 
 class ImpostazioniFrame(ctk.CTkFrame):
     def __init__(self, master, app):
-        super().__init__(master, fg_color="white")
+        super().__init__(master, fg_color="#212121")
         self.app = app
 
         ctk.CTkLabel(self, text="⚙  Impostazioni", font=FONT_TITLE).pack(
@@ -866,7 +879,7 @@ class ImpostazioniFrame(ctk.CTkFrame):
         ).pack(anchor="w", padx=40, pady=(0, 24))
 
         # ── API key ──────────────────────────────────────────────────────────
-        box1 = ctk.CTkFrame(self, fg_color="#f7f8fa", corner_radius=12)
+        box1 = ctk.CTkFrame(self, fg_color="#2a2a2a", corner_radius=12)
         box1.pack(fill="x", padx=40, pady=10)
         ctk.CTkLabel(box1, text="Chiave API Anthropic (per la pulizia AI dei titoli)",
                       font=FONT_BOLD).pack(anchor="w", padx=20, pady=(18, 4))
@@ -887,7 +900,7 @@ class ImpostazioniFrame(ctk.CTkFrame):
         ).pack(side="left", padx=10)
 
         # ── Cartella report ──────────────────────────────────────────────────
-        box2 = ctk.CTkFrame(self, fg_color="#f7f8fa", corner_radius=12)
+        box2 = ctk.CTkFrame(self, fg_color="#2a2a2a", corner_radius=12)
         box2.pack(fill="x", padx=40, pady=10)
         ctk.CTkLabel(box2, text="Cartella dove salvare i report",
                       font=FONT_BOLD).pack(anchor="w", padx=20, pady=(18, 4))
@@ -904,7 +917,7 @@ class ImpostazioniFrame(ctk.CTkFrame):
         ).pack(side="left", padx=10)
 
         # ── Siti competitor ──────────────────────────────────────────────────
-        box3 = ctk.CTkFrame(self, fg_color="#f7f8fa", corner_radius=12)
+        box3 = ctk.CTkFrame(self, fg_color="#2a2a2a", corner_radius=12)
         box3.pack(fill="x", padx=40, pady=10)
         ctk.CTkLabel(box3, text="Siti competitor da controllare",
                       font=FONT_BOLD).pack(anchor="w", padx=20, pady=(18, 4))
@@ -983,7 +996,7 @@ class App(ctk.CTk):
         self.sidebar = Sidebar(self, on_select=self.show)
         self.sidebar.grid(row=0, column=0, sticky="nsew")
 
-        container = ctk.CTkFrame(self, fg_color="white", corner_radius=0)
+        container = ctk.CTkFrame(self, fg_color="#212121", corner_radius=0)
         container.grid(row=0, column=1, sticky="nsew")
         container.grid_rowconfigure(0, weight=1)
         container.grid_columnconfigure(0, weight=1)
