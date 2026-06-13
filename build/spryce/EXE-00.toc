@@ -69,7 +69,7 @@
  [],
  False,
  False,
- 1781362675,
+ 1781368330,
  [('runw.exe',
    'C:\\Script\\price_checker\\venv\\Lib\\site-packages\\PyInstaller\\bootloader\\Windows-64bit-intel\\runw.exe',
    'EXECUTABLE')],

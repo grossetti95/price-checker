@@ -300,12 +300,12 @@ class SelezioneFrame(ctk.CTkFrame):
         sel_row.pack(fill="x")
         self.sel_all_btn = ctk.CTkButton(
             sel_row, text="Seleziona tutti", width=140, height=30, font=FONT_SMALL,
-            fg_color="#1f9d55", hover_color="#c0392b", border_width=1, text_color="#ffffff",
+            fg_color="#00b4d8", hover_color="#1a8a7a", border_width=1, text_color="#ffffff",
             command=lambda: self._set_all_checks(True),
         )
         self.desel_all_btn = ctk.CTkButton(
             sel_row, text="Deseleziona tutti", width=140, height=30, font=FONT_SMALL,
-            fg_color="#1f9d55", hover_color="#c0392b", border_width=1, text_color="#ffffff",
+            fg_color="#00b4d8", hover_color="#1a8a7a", border_width=1, text_color="#ffffff",
             command=lambda: self._set_all_checks(False),
         )
 
@@ -747,21 +747,21 @@ class RisultatiFrame(ctk.CTkFrame):
         btn_row.pack(fill="x", padx=40, pady=(0, 16))
 
         self.open_report_btn = ctk.CTkButton(
-            btn_row, text="📄  Apri report (.txt)", font=FONT_BOLD, height=42, fg_color="#1f9d55", hover_color="#c0392b",
+            btn_row, text="📄  Apri report (.txt)", font=FONT_BOLD, height=42, fg_color="#00b4d8", hover_color="#1a8a7a", border_width=1, text_color="#ffffff",
             command=self._open_report,
         )
         self.open_report_btn.pack(side="left")
 
         self.open_folder_btn = ctk.CTkButton(
             btn_row, text="📁  Apri cartella report", font=FONT_BOLD, height=42,
-            fg_color="#1f9d55", hover_color="#c0392b", border_width=1, text_color="#ffffff",
+            fg_color="#00b4d8", hover_color="#1a8a7a", border_width=1, text_color="#ffffff",
             command=self._open_folder,
         )
         self.open_folder_btn.pack(side="left", padx=10)
 
         ctk.CTkButton(
             btn_row, text="↺  Nuova analisi", font=FONT_BOLD, height=42,
-            fg_color="#1f9d55", text_color="#ffffff", hover_color="#c0392b", border_width=1,
+            fg_color="#00b4d8", hover_color="#1a8a7a", border_width=1, text_color="#ffffff",
             command=lambda: app.show("selezione"),
         ).pack(side="right")
 
