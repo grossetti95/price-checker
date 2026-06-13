@@ -1,0 +1,5 @@
+To Do list CPC:
+
+-1 i due tasti "apri cartella reports" e "apri reports.txt" sono dei placeholder, non funzionano.
+-2 l'exe non crea il file report nell'apposita cartella
+-3 rivedere la parte grafica
