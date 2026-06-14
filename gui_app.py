@@ -25,6 +25,7 @@ from tkinter import filedialog, messagebox
 from PIL import ImageTk
 import auth
 import login_frame  # ← aggiungi questa riga
+import storage
 import core
 
 # ── Tema applicato all'avvio (verrà sovrascritto da App.__init__) ──────────
@@ -723,6 +724,20 @@ class AnalisiFrame(ctk.CTkFrame):
             self.progress_label.configure(text="Analisi completata.")
 
         self.app.last_result = result
+
+        # ── Salva ricerca su cloud (in background, non bloccante) ─────────
+        if not result.interrotto:
+            def _cloud_save():
+                try:
+                    storage.save_search(
+                        results=result.alerts_data,
+                        csv_filename=os.path.basename(self.app.csv_path or ""),
+                        competitor_sites=self.app.cfg.get("competitor_sites", []),
+                    )
+                except Exception as e:
+                    print(f"[gui] save_search cloud fallito: {e}")
+            threading.Thread(target=_cloud_save, daemon=True).start()
+
         self.app.sidebar.set_enabled("risultati", True)
         self.app.refresh_results()
         self.app.show("risultati")
@@ -1057,6 +1072,12 @@ class ImpostazioniFrame(ctk.CTkFrame):
         # Aggiorna il logo in base al tema
         self.app.sidebar.update_logo(theme)
 
+        # ── Sync cloud ────────────────────────────────────────────────────
+        try:
+            storage.save_settings(self.app.cfg)
+        except Exception as e:
+            print(f"[gui] save_settings cloud fallito: {e}")
+
         self.saved_label.configure(text="✔  Impostazioni salvate")
         self.after(2500, lambda: self.saved_label.configure(text=""))
 
@@ -1166,7 +1187,22 @@ class App(ctk.CTk):
         """Chiamato da LoginFrame dopo autenticazione riuscita."""
         self.session = session
         self.login_frame.grid_forget()
+
+        # ── Sincronizza impostazioni dal cloud ────────────────────────────
+        try:
+            cloud_cfg = storage.load_settings()
+            if cloud_cfg:
+                self.cfg.update(cloud_cfg)
+                config.save_config(self.cfg)
+                # Applica tema cloud subito
+                ctk.set_appearance_mode(self.cfg.get("theme", "light"))
+                self.sidebar.update_logo(self.cfg.get("theme", "light"))
+        except Exception as e:
+            print(f"[gui] load_settings dal cloud fallito: {e}")
+
         self.show("catalogo")
+        self.frames["impostazioni"].refresh()
+
         # Mostra il nome utente nel footer
         try:
             name = session.full_name or session.email or ""

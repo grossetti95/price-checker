@@ -128,29 +128,82 @@ def login_oauth(provider: str) -> tuple[bool, str]:
                 parsed = urllib.parse.urlparse(self.path)
 
                 # Ignora favicon e altre richieste spurie
-                if parsed.path != "/auth/callback":
+                if parsed.path not in ("/auth/callback", "/auth/token"):
                     self.send_response(204)
                     self.end_headers()
                     return
 
                 params = urllib.parse.parse_qs(parsed.query)
 
+                # ── /auth/token: chiamata JS che porta i parametri dal fragment ──
+                if parsed.path == "/auth/token":
+                    self.send_response(200)
+                    self.send_header("Content-type", "text/html; charset=utf-8")
+                    self.end_headers()
+                    self.wfile.write(b"OK")
+
+                    if "access_token" in params:
+                        result["access_token"] = params["access_token"][0]
+                        result["refresh_token"] = params.get("refresh_token", [""])[0]
+                        result["token_type"] = params.get("token_type", ["bearer"])[0]
+                    elif "code" in params:
+                        result["code"] = params["code"][0]
+                    elif "error" in params:
+                        result["error"] = params.get("error_description", ["Errore OAuth"])[0]
+
+                    threading.Thread(target=server.shutdown, daemon=True).start()
+                    return
+
+                # ── /auth/callback: prima risposta dal browser ──────────────────
+                # Può arrivare con ?code= (PKCE) oppure senza (token nel fragment).
+                # In entrambi i casi serviamo una pagina HTML che:
+                #   1. Se c'è il fragment (#access_token=...) lo gira a /auth/token
+                #   2. Se c'è già ?code= lo gira subito a /auth/token
+                #   3. Mostra il messaggio di successo
                 self.send_response(200)
                 self.send_header("Content-type", "text/html; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(b"""
-                    <html><body style='font-family:sans-serif;text-align:center;padding-top:80px'>
-                    <h2>&#10003; Login completato!</h2>
-                    <p>Puoi chiudere questa scheda e tornare a Spryce.</p>
-                    </body></html>
-                """)
+                self.wfile.write(b"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Spryce - Login</title></head>
+<body style="font-family:sans-serif;text-align:center;padding-top:80px">
+<h2>&#10003; Login completato!</h2>
+<p>Puoi chiudere questa scheda e tornare a Spryce.</p>
+<script>
+(function() {
+    // Raccoglie parametri sia dal fragment che dal query string
+    var params = {};
+    var qs = window.location.search.slice(1);
+    var hash = window.location.hash.slice(1);
+    function parseQS(str) {
+        str.split('&').forEach(function(p) {
+            var kv = p.split('=');
+            if (kv[0]) params[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1] || '');
+        });
+    }
+    if (qs) parseQS(qs);
+    if (hash) parseQS(hash);
 
+    // Manda tutto al server Python tramite /auth/token
+    var tokenUrl = 'http://localhost:""" + str(OAUTH_CALLBACK_PORT).encode() + b"""/auth/token?';
+    var parts = [];
+    for (var k in params) {
+        parts.push(encodeURIComponent(k) + '=' + encodeURIComponent(params[k]));
+    }
+    if (parts.length > 0) {
+        fetch(tokenUrl + parts.join('&')).catch(function(){});
+    }
+})();
+</script>
+</body></html>""")
+
+                # Caso PKCE classico: il code arriva già nel query string
                 if "code" in params:
                     result["code"] = params["code"][0]
+                    threading.Thread(target=server.shutdown, daemon=True).start()
                 elif "error" in params:
                     result["error"] = params.get("error_description", ["Errore OAuth"])[0]
-
-                threading.Thread(target=server.shutdown, daemon=True).start()
+                    threading.Thread(target=server.shutdown, daemon=True).start()
+                # Altrimenti aspettiamo la chiamata a /auth/token dal JS
 
             def log_message(self, *args):
                 pass
@@ -182,12 +235,23 @@ def login_oauth(provider: str) -> tuple[bool, str]:
 
         if "error" in result:
             return False, result["error"]
+
+        # ── Caso 1: access_token diretto nel fragment (Implicit / magic-link) ──
+        if "access_token" in result:
+            print(f"[DEBUG] Access token diretto ricevuto, imposto sessione...")
+            session_res = client.auth.set_session(
+                result["access_token"], result.get("refresh_token", "")
+            )
+            if session_res.user:
+                Session.from_supabase(session_res)
+                return True, ""
+            return False, "Impossibile impostare la sessione OAuth."
+
+        # ── Caso 2: PKCE code flow ────────────────────────────────────────────
         if "code" not in result:
             return False, "Login annullato o scaduto."
 
         print(f"[DEBUG] Code ricevuto, scambio con sessione...")
-
-        # Scambia il code con la sessione
         session_res = client.auth.exchange_code_for_session({"auth_code": result["code"]})
 
         if session_res.user:
