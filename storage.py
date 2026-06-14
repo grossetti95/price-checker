@@ -90,10 +90,6 @@ def save_settings(cfg: dict) -> bool:
 
 
 def load_settings() -> Optional[dict]:
-    """
-    Carica le impostazioni dell'utente dal cloud.
-    Ritorna un dict con le chiavi di config.DEFAULTS, o None se non trovate.
-    """
     if not _ok():
         return None
     try:
@@ -101,14 +97,15 @@ def load_settings() -> Optional[dict]:
         res = client.table("user_settings") \
             .select("theme, anthropic_api_key, output_dir, competitor_sites") \
             .eq("user_id", _user_id()) \
-            .single() \
+            .limit(1) \
             .execute()
-        if res.data:
+        if res.data and len(res.data) > 0:
+            d = res.data[0]
             return {
-                "theme":             res.data.get("theme", "light"),
-                "anthropic_api_key": res.data.get("anthropic_api_key", ""),
-                "output_dir":        res.data.get("output_dir", ""),
-                "competitor_sites":  res.data.get("competitor_sites", []),
+                "theme":             d.get("theme", "light"),
+                "anthropic_api_key": d.get("anthropic_api_key", ""),
+                "output_dir":        d.get("output_dir", ""),
+                "competitor_sites":  d.get("competitor_sites", []),
             }
         return None
     except Exception as e:
@@ -295,6 +292,42 @@ def delete_csv(csv_id: str, storage_path: str) -> bool:
         print(f"[storage] delete_csv error: {e}")
         return False
 
+def get_profile_csv(dest_dir: str) -> tuple[bool, str]:
+    """
+    Scarica il CSV più recente caricato dall'utente nel profilo.
+    Ritorna (True, percorso_locale) oppure (False, messaggio_errore).
+    """
+    if not _ok():
+        return False, "Utente non autenticato."
+    try:
+        client = _client()
+        res = client.table("imported_csvs") \
+            .select("filename, storage_path, imported_at") \
+            .eq("user_id", _user_id()) \
+            .order("imported_at", desc=True) \
+            .limit(1) \
+            .execute()
+
+        if not res.data or len(res.data) == 0:
+            return False, "Nessun CSV trovato nel profilo. Caricane uno dalla schermata Account."
+
+        row          = res.data[0]
+        storage_path = row["storage_path"]
+        filename     = row["filename"]
+
+        import os
+        os.makedirs(dest_dir, exist_ok=True)
+        dest = os.path.join(dest_dir, filename)
+
+        data = client.storage.from_("csvs").download(storage_path)
+        with open(dest, "wb") as f:
+            f.write(data)
+
+        return True, dest
+
+    except Exception as e:
+        print(f"[storage] get_profile_csv error: {e}")
+        return False, f"Errore durante il download: {e}"
 
 # ── Admin ─────────────────────────────────────────────────────────────────
 

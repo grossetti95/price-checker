@@ -27,6 +27,7 @@ import auth
 import login_frame  # ← aggiungi questa riga
 import storage
 import core
+import account_frame
 
 # ── Tema applicato all'avvio (verrà sovrascritto da App.__init__) ──────────
 ctk.set_default_color_theme("blue")
@@ -74,6 +75,7 @@ class Sidebar(ctk.CTkFrame):
         ("selezione",    "2.  Selezione prodotti"),
         ("analisi",      "3.  Analisi"),
         ("risultati",    "4.  Risultati"),
+        ("account",      "👤  Account"),
         ("impostazioni", "⚙  Impostazioni"),
     ]
 
@@ -127,10 +129,6 @@ class Sidebar(ctk.CTkFrame):
             pass  # se logo_dark.png non esiste ancora, non fa nulla
 
 
-# ──────────────────────────────────────────────────────────────────────────
-# STEP 1 — CATALOGO
-# ──────────────────────────────────────────────────────────────────────────
-
 class CatalogoFrame(ctk.CTkFrame):
     def __init__(self, master, app):
         super().__init__(master, fg_color=("#f7fafa", "#1a1a1a"))
@@ -147,15 +145,33 @@ class CatalogoFrame(ctk.CTkFrame):
         box = ctk.CTkFrame(self, fg_color=("white", "#2b2b2b"), corner_radius=12)
         box.pack(fill="x", padx=40, pady=10)
 
+        # ── Riga pulsanti ─────────────────────────────────────────────────
+        btn_row = ctk.CTkFrame(box, fg_color="transparent")
+        btn_row.pack(padx=24, pady=(24, 0), anchor="w")
+
         ctk.CTkButton(
-            box, text="📂  Scegli file CSV...", font=FONT_BOLD, height=44,
+            btn_row, text="📂  Scegli file CSV...", font=FONT_BOLD, height=44,
             command=self.choose_file,
-        ).pack(padx=24, pady=24, anchor="w")
+        ).pack(side="left", padx=(0, 12))
+
+        self.cloud_btn = ctk.CTkButton(
+            btn_row,
+            text="☁  Usa CSV dal profilo",
+            font=FONT_BOLD,
+            height=44,
+            fg_color="transparent",
+            border_width=1,
+            border_color=("#1a8a7a", "#1a8a7a"),
+            text_color=("#1a8a7a", "#1a8a7a"),
+            hover_color=("#d0f0ec", "#1f3f3a"),
+            command=self.load_from_cloud,
+        )
+        self.cloud_btn.pack(side="left")
 
         self.status_label = ctk.CTkLabel(
             box, text="Nessun file selezionato.", font=FONT_NORMAL, text_color=MUTED
         )
-        self.status_label.pack(padx=24, pady=(0, 24), anchor="w")
+        self.status_label.pack(padx=24, pady=(12, 24), anchor="w")
 
         self.next_btn = ctk.CTkButton(
             self, text="Avanti  →", font=FONT_BOLD, height=44, width=160,
@@ -172,7 +188,30 @@ class CatalogoFrame(ctk.CTkFrame):
         )
         if not path:
             return
+        self._load_path(path, save_dir=True)
 
+    def load_from_cloud(self):
+        self.cloud_btn.configure(state="disabled", text="⏳  Download...")
+        self.status_label.configure(text="Download CSV dal profilo...", text_color=MUTED)
+
+        import tempfile
+        dest_dir = os.path.join(tempfile.gettempdir(), "spryce_csv")
+
+        def worker():
+            ok, result = storage.get_profile_csv(dest_dir)
+            if ok:
+                self.after(0, lambda: self._load_path(result, save_dir=False))
+            else:
+                self.after(0, lambda: self.status_label.configure(
+                    text=f"✖  {result}", text_color=ACCENT_RED))
+            self.after(0, lambda: self.cloud_btn.configure(
+                state="normal", text="☁  Usa CSV dal profilo"))
+
+        import threading
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _load_path(self, path: str, save_dir: bool = True):
+        """Punto unico di caricamento: usato sia dal filedialog che dal cloud."""
         try:
             df = core.load_products(path)
         except Exception as e:
@@ -192,15 +231,17 @@ class CatalogoFrame(ctk.CTkFrame):
 
         self.app.df = df
         self.app.csv_path = path
-        self.app.cfg = config.update_config(last_csv_dir=os.path.dirname(path))
 
+        if save_dir:
+            self.app.cfg = config.update_config(last_csv_dir=os.path.dirname(path))
+
+        source = "☁  profilo cloud" if not save_dir else os.path.basename(path)
         self.status_label.configure(
-            text=f"✔  {os.path.basename(path)}   —   {len(df)} prodotti attivi caricati",
+            text=f"✔  {source}   —   {len(df)} prodotti attivi caricati",
             text_color=ACCENT_GREEN,
         )
         self.next_btn.configure(state="normal")
         self.app.sidebar.set_enabled("selezione", True)
-
         self.app.selected_df = None
         self.app.on_catalog_loaded()
 
@@ -1119,6 +1160,7 @@ class App(ctk.CTk):
             "selezione":    SelezioneFrame(container, self),
             "analisi":      AnalisiFrame(container, self),
             "risultati":    RisultatiFrame(container, self),
+            "account":      account_frame.AccountFrame(container, self),
             "impostazioni": ImpostazioniFrame(container, self),
         }
         for frame in self.frames.values():
@@ -1225,6 +1267,8 @@ class App(ctk.CTk):
             self.frames["impostazioni"].refresh()
         if key == "risultati":
             self.frames["risultati"].refresh()
+        if key == "account":
+            self.frames["account"].refresh()
 
         self.frames[key].tkraise()
         self.sidebar.set_active(key)
