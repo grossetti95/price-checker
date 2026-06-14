@@ -1,52 +1,54 @@
 # -*- mode: python ; coding: utf-8 -*-
 #
-# Spec file PyInstaller per Competitor Price Checker.
+# Spec file PyInstaller per Spryce.
 #
-# Uso (da terminale, sul PC Windows dove vuoi creare il .exe):
-#     pyinstaller CompetitorPriceChecker.spec
+# Uso (da terminale, con venv attivo):
+#     pyinstaller Spryce.spec
 #
-# L'eseguibile finale si troverà in: dist/CompetitorPriceChecker/CompetitorPriceChecker.exe
+# L'eseguibile finale si troverà in: dist/Spryce/Spryce.exe
 #
 # NOTA: usa --onedir (non --onefile). Con --onefile l'avvio è molto più lento
 # perché ogni volta deve decomprimere tutte le librerie (pandas, selenium, ecc.)
 # in una cartella temporanea. Con --onedir basta consegnare l'intera cartella
-# "CompetitorPriceChecker" (anche zippata) ai colleghi.
+# "Spryce" (anche zippata) ai clienti.
 
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 import os
 
-_ICON = "icon.ico" if os.path.exists("icon.ico") else None
-
 datas = []
-datas.append(("icon.ico", "."))
 
-# Raccogli l'intera cartella di customtkinter (temi, font, immagini).
-# collect_data_files a volte non riconosce customtkinter come "package"
-# in alcuni ambienti (Anaconda): qui lo prendiamo direttamente dal modulo
-# importato, che funziona sempre.
+# Asset grafici
+datas.append(("logo.png",      "."))
+datas.append(("icon.ico",      "."))
+datas.append(("icon.png",      "."))
+
+# logo_dark.png è opzionale: viene usato solo se presente
+if os.path.exists("logo_dark.png"):
+    datas.append(("logo_dark.png", "."))
+
+# customtkinter: temi, font, immagini
 import customtkinter
 _ctk_dir = os.path.dirname(customtkinter.__file__)
-datas.append(("logo.png", "."))
 datas.append((_ctk_dir, "customtkinter"))
 
 hiddenimports = []
 hiddenimports += collect_submodules("selenium")
 hiddenimports += collect_submodules("webdriver_manager")
+hiddenimports += collect_submodules("supabase")
+hiddenimports += collect_submodules("gotrue")
 hiddenimports += [
     "bs4",
     "lxml",
     "lxml.etree",
     "anthropic",
+    "httpx",
+    "httpx._transports.default",
 ]
 
 excludes = [
-    # Binding Qt: l'app usa CustomTkinter (basato su Tkinter), non Qt.
-    # Se nell'ambiente Python sono installati sia PyQt5 che PySide6 (tipico
-    # di un Anaconda "base" molto pieno), PyInstaller si blocca perché non
-    # può includerli entrambi. Li escludiamo entrambi: non servono.
+    # Qt bindings: l'app usa CustomTkinter (Tkinter), non Qt.
     "PyQt5", "PyQt6", "PySide2", "PySide6",
-    # Altri package tipici di un ambiente Anaconda "base" che non servono
-    # a questa applicazione e che appesantiscono/allungano molto il build.
+    # Package tipici di Anaconda base non necessari qui.
     "matplotlib", "scipy", "IPython", "ipykernel", "jupyter", "jupyter_client",
     "jupyter_core", "notebook", "nbformat", "nbconvert", "sphinx", "pytest",
     "black", "jedi", "parso", "zmq", "tornado", "docutils", "babel", "dask",
@@ -74,18 +76,18 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name="CompetitorPriceChecker",
+    name="Spryce",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=False,          # niente finestra nera del terminale
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon="icon.ico",              
+    icon="icon.ico",
 )
 
 coll = COLLECT(

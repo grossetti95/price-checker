@@ -7,9 +7,9 @@ nella cartella dati utente, in modo che restino tra una sessione e l'altra
 e che non finiscano nel codice/eseguibile.
 
 Percorso del file:
-    Windows : %APPDATA%/CompetitorPriceChecker/config.json
-    macOS   : ~/Library/Application Support/CompetitorPriceChecker/config.json
-    Linux   : ~/.config/CompetitorPriceChecker/config.json
+    Windows : %APPDATA%/Spryce/config.json
+    macOS   : ~/Library/Application Support/Spryce/config.json
+    Linux   : ~/.config/Spryce/config.json
 """
 
 from __future__ import annotations
@@ -41,7 +41,8 @@ DEFAULTS = {
     "use_ai": True,
     "competitor_sites": DEFAULT_COMPETITOR_SITES,
     "output_dir": str(Path.home() / "Desktop"),
-    "last_csv_dir": r"C:\Program Files\Spryce\CSV",
+    "last_csv_dir": str(Path.home() / "Documents" / "Spryce" / "CSV"),
+    "theme": "light",
 }
 
 
@@ -64,7 +65,7 @@ def load_config() -> dict:
     if csv_dir and not os.path.exists(csv_dir):
         os.makedirs(csv_dir, exist_ok=True)
 
-    return cfg  # ← just before this line
+    return cfg
 
 
 def save_config(cfg: dict) -> None:

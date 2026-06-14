@@ -1,6 +1,6 @@
 # Spryce — Competitor Price Checker
 
-Desktop application with a graphical interface for comparing Shopify catalog prices against competitor websites. Built with Python, CustomTkinter, and Selenium.
+Desktop application with a graphical interface for comparing Shopify catalog prices against competitor websites. Built with Python, CustomTkinter, and Selenium. Supports cloud authentication via Supabase (Google, Apple, Microsoft login).
 
 ## Project Structure
 
@@ -9,7 +9,9 @@ Spryce/
 ├── core.py                     # business logic (CSV, Selenium, AI, reports)
 ├── config.py                   # local settings management
 ├── gui_app.py                  # GUI entry point
-├── logo.png                    # shop logo displayed in the sidebar
+├── auth.py                     # Supabase authentication (login/register/OAuth)
+├── logo.png                    # sidebar logo (light mode)
+├── logo_dark.png               # sidebar logo (dark mode) — optional
 ├── icon.ico                    # app icon (titlebar + .exe)
 ├── icon.png                    # app icon (taskbar, runtime)
 ├── requirements.txt
@@ -22,13 +24,13 @@ Spryce/
 
 - **Windows 10/11**
 - **Python 3.11 or 3.12** ([python.org](https://www.python.org/downloads/) — check "Add Python to PATH" during install)
-- **Google Chrome** installed (required both for testing and on end-user machines: the script drives it headlessly)
+- **Google Chrome** installed (required both for testing and on end-user machines)
 
 ---
 
 ## 2. Environment Setup
 
-⚠️ **Use a clean Python environment, NOT an Anaconda base env**. Anaconda base includes hundreds of libraries (Jupyter, matplotlib, PyQt5 *and* PySide6, sphinx, etc.) that PyInstaller tries to bundle, causing very slow builds, huge output, and errors like:
+⚠️ **Use a clean Python environment, NOT an Anaconda base env**. Anaconda base includes hundreds of libraries that PyInstaller tries to bundle, causing very slow builds, huge output, and errors like:
 
 ```
 ERROR: Aborting build process due to attempt to collect multiple Qt
@@ -43,101 +45,84 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-(If only Anaconda is installed and `python` isn't in PATH, use
-`C:\Users\YOUR_USER\anaconda3\python.exe -m venv venv` to create the venv,
-then activate normally with `venv\Scripts\activate`.)
+---
+
+## 3. Supabase Setup (Authentication)
+
+Spryce uses [Supabase](https://supabase.com) for cloud authentication (email/password, Google, Apple, Microsoft).
+
+### Create a project
+1. Sign up at [supabase.com](https://supabase.com) and create a new project
+2. Go to **Project Settings → API** and copy:
+   - `Project URL`
+   - `anon / public key`
+3. Create a file `.env` in the project root (never commit this):
+
+```
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+```
+
+### Enable OAuth providers
+In Supabase dashboard → **Authentication → Providers**, enable the ones you want (Google, Azure/Microsoft, Apple) and follow the setup guide for each. Each provider requires you to register a developer app on their platform and paste the client ID + secret into Supabase.
 
 ---
 
-## 3. Customizing for a New Shop
+## 4. Customizing for a New Shop
 
 ### Logo
-Place the shop logo as `logo.png` in the project root. It must be a valid PNG file (re-export from any image editor if unsure). In `gui_app.py`, adjust the `size` parameter inside `Sidebar.__init__` to match the logo's proportions:
+Place the shop logo as `logo.png` in the project root. Optionally add `logo_dark.png` for dark mode — if not present, `logo.png` is used for both themes.
+
+In `gui_app.py`, adjust the `size` parameter inside `Sidebar.__init__`:
 
 ```python
 logo_img = ctk.CTkImage(
     light_image=Image.open(resource_path("logo.png")),
-    size=(160, 120)   # ← adjust width/height to your logo's proportions
+    size=(160, 120)   # ← adjust to your logo's proportions
 )
 ```
 
-Always use `resource_path()` when opening the logo — it ensures the file is found both during development and inside the compiled `.exe`.
-
 ### Colors
-All UI colors are defined at the top of `gui_app.py` (lines 31–43):
+All UI colors are defined at the top of `gui_app.py`:
 
 ```python
 ctk.ThemeManager.theme["CTkButton"]["fg_color"]    = ["#1a8a7a", "#1a8a7a"]
 ctk.ThemeManager.theme["CTkButton"]["hover_color"] = ["#00b4d8", "#00b4d8"]
 
-ACCENT_GREEN  = "#1a8a7a"   # teal — confirm actions, success states
-ACCENT_RED    = "#e05555"   # red  — alerts, stop button
-ACCENT_YELLOW = "#00b4d8"   # cyan — highlights, warnings
-MUTED         = "#9a9a9a"   # grey — subtle labels
+ACCENT_GREEN  = "#1a8a7a"
+ACCENT_RED    = "#e05555"
+ACCENT_YELLOW = "#00b4d8"
+MUTED         = "#9a9a9a"
 ```
 
-The sidebar background is set in `Sidebar.__init__` (`fg_color`), and frame/card backgrounds are set per-frame as `fg_color` on each `CTkFrame`. Use `Ctrl+H` in VSCode to do bulk replacements when rebranding.
+Adaptive colors (light/dark) use tuples: `fg_color=("white", "#2b2b2b")`.
 
 ### App Name
 - Window title: `self.title(...)` in `App.__init__` in `gui_app.py`
 - Footer text: `text="Copyright 2026 ..."` in `App.__init__`
-- Config folder: `APP_NAME = "Spryce"` in `config.py` (changing this moves the config file to `%APPDATA%\<new name>\`)
+- Config folder: `APP_NAME = "Spryce"` in `config.py`
 - Output exe name: `name='Spryce'` in the `.spec` file
-
-### CSV Default Folder
-The file picker opens by default in `C:\Program Files\Spryce\CSV` (set in `config.py`):
-
-```python
-"last_csv_dir": r"C:\Program Files\Spryce\CSV",
-```
-
-This folder is created automatically on first launch if it doesn't exist. Change this path to match the target machine's preferred location.
-
-### Icons
-- `icon.ico` — used by PyInstaller for the `.exe` icon and title bar (must include sizes 16, 32, 48, 256px)
-- `icon.png` — used at runtime for the taskbar icon (256×256px recommended)
-
-To generate a valid `.ico` from a PNG using Pillow:
-
-```python
-from PIL import Image
-img = Image.open("logo.png").convert("RGBA")
-img.save("icon.ico", format="ICO", sizes=[(16,16),(32,32),(48,48),(256,256)])
-```
-
-Both files must be listed in the `.spec` datas:
-
-```python
-datas.append(("logo.png", "."))
-datas.append(("icon.ico", "."))
-datas.append(("icon.png", "."))
-```
 
 ---
 
-## 4. Quick Test Before Building
-
-Run the app locally to verify everything works:
+## 5. Quick Test Before Building
 
 ```powershell
 python gui_app.py
 ```
 
-Go to the **⚙ Impostazioni** screen and:
-- enter your Anthropic API key (used for AI-based title normalization)
-- check/set the folder where reports will be saved
-- review the competitor sites list (one per line)
+Go to **⚙ Impostazioni** and:
+- enter your Anthropic API key
+- set the report output folder
+- review competitor sites
+- choose light/dark theme
 - click **Salva impostazioni**
 
-Settings are saved locally and never bundled into the `.exe`:
-
-```
-%APPDATA%\Spryce\config.json
-```
+Settings are saved locally at `%APPDATA%\Spryce\config.json`.
 
 ---
 
-## 5. Building the `.exe`
+## 6. Building the `.exe`
 
 With the virtual environment active:
 
@@ -145,55 +130,36 @@ With the virtual environment active:
 pyinstaller Spryce.spec
 ```
 
-The output will be in:
+Output in `dist\Spryce\`. Distribute the **entire folder**, not just the `.exe`.
 
-```
-dist\Spryce\
-```
-
-That folder (which can be zipped) is the complete app: it contains `Spryce.exe` plus all required libraries, the logo, and the icons.
-
-⚠️ **Important**: distribute the entire folder, not just the `.exe` — it won't launch otherwise.
+⚠️ If `logo_dark.png` exists in the project root, it is automatically included in the build.
 
 ---
 
-## 6. Usage
+## 7. Usage
 
 1. Double-click the app icon
-2. **1. Catalogo** → select the CSV exported from Shopify (Prodotti → Esporta)
-3. **2. Selezione prodotti** → choose All, by keyword, or by brand
-4. **3. Analisi** → click "Avvia analisi" and wait
-5. **4. Risultati** → review flagged products and open the report
+2. **Login / Registrazione** → sign in or create an account (email or OAuth)
+3. **1. Catalogo** → import via CSV or Shopify API
+4. **2. Selezione prodotti** → All, by keyword, or by brand
+5. **3. Analisi** → click "Avvia analisi" and wait
+6. **4. Risultati** → review alerts, update prices, export
 
 ### Requirements on the end-user machine
+- **Google Chrome** installed
+- **Internet connection**
 
-- **Google Chrome** installed (standard version, nothing else needed)
-- **Internet connection** (to scrape competitor sites and, on first run, to auto-download the matching ChromeDriver)
-
-No Python or additional libraries required — everything is bundled in the `.exe`.
-
----
-
-## 7. Updating the App
-
-When you want to change logic or add competitor sites:
-
-1. Edit `core.py` (logic) or `gui_app.py` (interface)
-2. Re-run `pyinstaller Spryce.spec`
-3. Replace the `dist\Spryce` folder on target machines (their settings in `%APPDATA%\Spryce` are untouched)
-
-To add competitor sites **without rebuilding**, add them in Impostazioni → "Siti competitor da controllare", one per line. If a site uses a non-standard search URL (different from `/search?q=...`), update `SEARCH_URLS` in `core.py` and rebuild.
+No Python or additional libraries required.
 
 ---
 
 ## 8. Performance & Limitations
 
-- Chrome runs in headless mode — no visible browser windows.
-- **Speed**: competitor sites are checked **in parallel** for each product (one browser instance per site, reused across the full catalog). Pages are considered ready as soon as the main content loads (`page_load_strategy = "eager"`). With 4 sites, each product takes ~3–8 seconds.
-- If a site is slow or unreachable, it is skipped for that product after `PAGE_TIMEOUT` seconds (default: 10, configurable in `core.py`).
-- The "Interrompi" button halts the analysis after the current product finishes and saves a partial report.
-- The "% in meno" threshold hides negligible price differences (e.g. with 3%, a competitor only 1% cheaper won't trigger an alert).
-- For large catalogs, filtering by brand or keyword before running the analysis is recommended.
+- Chrome runs in **headless mode** — no visible browser windows.
+- Competitor sites are checked **in parallel** (one browser per site). With 4 sites, each product takes ~3–8 seconds.
+- Slow/unreachable sites are skipped after `PAGE_TIMEOUT` seconds (default: 10).
+- The **Interrompi** button halts after the current product and saves a partial report.
+- For large catalogs, filtering by brand or keyword before running is recommended.
 
 ---
 
